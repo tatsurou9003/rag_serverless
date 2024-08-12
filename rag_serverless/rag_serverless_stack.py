@@ -1,19 +1,31 @@
 from aws_cdk import (
     # Duration,
     Stack,
-    # aws_sqs as sqs,
+    aws_secretsmanager as secretsmanager,
+    SecretValue,
+    CfnOutput
 )
 from constructs import Construct
+import os
+from dotenv import load_dotenv
 
-class RagServerlessStack(Stack):
 
+# Secrets ManagerにAPIキーを保存するスタック
+class SecretManagerStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
+        load_dotenv()
+        pc_api_key = os.environ.get("PINECONE_API_KEY")
 
-        # example resource
-        # queue = sqs.Queue(
-        #     self, "RagServerlessQueue",
-        #     visibility_timeout=Duration.seconds(300),
-        # )
+        # Secrets ManagerにAPIキーを保存
+        secret = secretsmanager.Secret(
+            self,
+            "Secret",
+            secret_name="pinecone",
+            secret_object_value={
+                "apiKey": SecretValue.unsafe_plain_text(pc_api_key),
+            },
+        )
+        secret_arn = secret.secret_arn
+        CfnOutput(self, "SecretArnOutput", value=secret_arn)

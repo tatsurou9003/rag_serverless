@@ -44,7 +44,34 @@ class BedrockKnowledgeBaseStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        bedrock_agent_role = 
+        # ポリシー定義
+        bedrock_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["bedrock:*"],
+            resources=["*"]
+        )
+
+        s3_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+            resources=["arn:aws:s3:::your-bucket-name", "arn:aws:s3:::your-bucket-name/*"]
+        )
+
+        secrets_manager_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+            resources=["arn:aws:secretsmanager:*:*:secret:your-secret-name-*"]
+        )
+
+        # IAMロールの作成
+        role = iam.Role(self, "MyBedrockRole",
+            assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            description="Role for Bedrock with S3 and Secrets Manager access"
+        )
+
+        role.add_to_policy(bedrock_policy)
+        role.add_to_policy(s3_policy)
+        role.add_to_policy(secrets_manager_policy)
 
         # データソース用のバケットを作成
         kb_bucket = s3.Bucket(
@@ -74,7 +101,7 @@ class BedrockKnowledgeBaseStack(Stack):
             "MyCfnKnowledgeBase",
             name="ServerlessKnowledgeBase",
             description="サーバレス構成RAG用のKnowledgeBase",
-            role_arn="SecretManager、S3、Pineconeにアクセスするためのロール",
+            role_arn=role.role_arn,
             knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
                 type="VECTOR",
                 vector_knowledge_base_configuration=bedrock.CfnKnowledgeBase.VectorKnowledgeBaseConfigurationProperty(
